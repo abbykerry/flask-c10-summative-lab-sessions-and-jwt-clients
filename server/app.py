@@ -1,5 +1,6 @@
 from flask import Flask
 from config import db, migrate, bcrypt, jwt
+from models import User, Note
 
 app = Flask(__name__)
 
