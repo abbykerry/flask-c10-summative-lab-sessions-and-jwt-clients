@@ -7,27 +7,26 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String, unique=True, nullable=False)
-    _password_hash = db.Column(db.String, nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    _password_hash = db.Column(db.String(255), nullable=False)
 
-    # relationship
     notes = db.relationship(
         'Note',
         backref='user',
         cascade='all, delete-orphan'
     )
 
-    # password property
     @hybrid_property
     def password_hash(self):
         return self._password_hash
 
     @password_hash.setter
     def password_hash(self, password):
-        password_hash = bcrypt.generate_password_hash(
-            password.encode('utf-8')
-        )
-        self._password_hash = password_hash.decode('utf-8')
+        if not password:
+            raise ValueError("Password cannot be empty")
+
+        hashed = bcrypt.generate_password_hash(password.encode('utf-8'))
+        self._password_hash = hashed.decode('utf-8')
 
     def authenticate(self, password):
         return bcrypt.check_password_hash(
@@ -35,34 +34,25 @@ class User(db.Model):
             password.encode('utf-8')
         )
 
-    # validations
     @validates('username')
     def validate_username(self, key, username):
         if not username or username.strip() == "":
             raise ValueError("Username cannot be empty")
-        return username
+        return username.strip()
 
 
 class Note(db.Model):
     __tablename__ = 'notes'
 
     id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(120), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50))
 
-    title = db.Column(db.String, nullable=False)
-    content = db.Column(db.String, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-    # optional category field
-    category = db.Column(db.String, nullable=True)
-
-    user_id = db.Column(
-        db.Integer,
-        db.ForeignKey('users.id'),
-        nullable=False
-    )
-
-    @validates('title', 'content', 'category')
+    @validates('title', 'content')
     def validate_fields(self, key, value):
-        # category is optional
-        if key in ['title', 'content'] and (not value or value.strip() == ""):
+        if not value or value.strip() == "":
             raise ValueError(f"{key} cannot be empty")
-        return value
+        return value.strip()

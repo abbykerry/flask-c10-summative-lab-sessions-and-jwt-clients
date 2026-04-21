@@ -1,67 +1,36 @@
 from flask import Flask
 from config import db, migrate, bcrypt, jwt
 
-app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY'] = 'super-secret-key'
+def create_app():
+    app = Flask(__name__)
 
-db.init_app(app)
-migrate.init_app(app, db)
-bcrypt.init_app(app)
-jwt.init_app(app)
+    # config
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['JWT_SECRET_KEY'] = 'super-secret-key'
 
-# import routes AFTER app creation (important fix)
-from flask import request, jsonify
-from models import User, Note
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+    # init extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    bcrypt.init_app(app)
+    jwt.init_app(app)
 
-# AUTH ROUTES (unchanged)
-@app.post('/signup')
-def signup():
-    data = request.get_json()
+    # import models
+    from models import User, Note
 
-    user = User(username=data.get('username'))
-    user.password_hash = data.get('password')
+    # registering blueprints
+    from routes.auth import auth_bp
+    from routes.notes import notes_bp
 
-    db.session.add(user)
-    db.session.commit()
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(notes_bp)
 
-    token = create_access_token(identity=str(user.id))
+    @app.route('/')
+    def home():
+        return {"message": "API running"}
 
-    return {
-        "token": token,
-        "user": {"id": user.id, "username": user.username}
-    }, 201
+    return app
 
 
-@app.post('/login')
-def login():
-    data = request.get_json()
-
-    user = User.query.filter_by(username=data.get('username')).first()
-
-    if user and user.authenticate(data.get('password')):
-        token = create_access_token(identity=str(user.id))
-
-        return {
-            "token": token,
-            "user": {"id": user.id, "username": user.username}
-        }, 200
-
-    return {"errors": ["Invalid credentials"]}, 401
-
-
-@app.get('/me')
-@jwt_required()
-def me():
-    user_id = get_jwt_identity()
-    user = User.query.get(int(user_id))
-
-    return {"id": user.id, "username": user.username}
-
-
-@app.route('/')
-def home():
-    return {"message": "API running"}
+app = create_app()
