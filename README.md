@@ -227,3 +227,4 @@ server/
 ## 👨‍💻 Author
 
 Built as a Flask JWT authentication + CRUD lab project.
+###

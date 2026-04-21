@@ -35,4 +35,4 @@ def create_app():
     return app
 
 
-app = create_app()
+app = create_app()#run.py will call this app variable to start the server
