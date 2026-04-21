@@ -3,7 +3,7 @@ from config import db, migrate, bcrypt, jwt
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__) 
 
 #configurations
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'

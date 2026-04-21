@@ -41,7 +41,7 @@ class User(db.Model):
         return username.strip()
 
 
-class Note(db.Model):
+class Note(db.Model): #notes table with title, content, category and user_id as foreign key to users table
     __tablename__ = "notes"
 
     id = db.Column(db.Integer, primary_key=True)
