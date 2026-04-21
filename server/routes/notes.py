@@ -5,7 +5,9 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 notes_bp = Blueprint('notes', __name__)
 
-
+# =========================
+# CREATE NOTE
+# =========================
 @notes_bp.post('/notes')
 @jwt_required()
 def create_note():
@@ -30,30 +32,42 @@ def create_note():
     }, 201
 
 
+# =========================
+# GET ALL NOTES (WITH PAGINATION)
+# =========================
 @notes_bp.get('/notes')
 @jwt_required()
 def get_notes():
     user_id = get_jwt_identity()
-    category = request.args.get('category')
+
+    # pagination params
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
 
     query = Note.query.filter_by(user_id=int(user_id))
 
-    if category:
-        query = query.filter_by(category=category)
+    paginated_notes = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    notes = query.all()
+    return {
+        "notes": [
+            {
+                "id": n.id,
+                "title": n.title,
+                "content": n.content,
+                "category": n.category
+            }
+            for n in paginated_notes.items
+        ],
+        "total": paginated_notes.total,
+        "page": paginated_notes.page,
+        "pages": paginated_notes.pages,
+        "per_page": paginated_notes.per_page
+    }, 200
 
-    return [
-        {
-            "id": n.id,
-            "title": n.title,
-            "content": n.content,
-            "category": n.category
-        }
-        for n in notes
-    ], 200
 
-
+# =========================
+# GET SINGLE NOTE
+# =========================
 @notes_bp.get('/notes/<int:id>')
 @jwt_required()
 def get_note(id):
@@ -72,6 +86,9 @@ def get_note(id):
     }, 200
 
 
+# =========================
+# UPDATE NOTE
+# =========================
 @notes_bp.patch('/notes/<int:id>')
 @jwt_required()
 def update_note(id):
@@ -102,6 +119,9 @@ def update_note(id):
     }, 200
 
 
+# =========================
+# DELETE NOTE
+# =========================
 @notes_bp.delete('/notes/<int:id>')
 @jwt_required()
 def delete_note(id):
