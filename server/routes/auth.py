@@ -6,13 +6,18 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 auth_bp = Blueprint("auth", __name__)
 
 
-@auth_bp.post("/signup")
+@auth_bp.post('/signup')
 def signup():
     data = request.get_json()
 
+    # check if user exists first
+    existing_user = User.query.filter_by(username=data.get('username')).first()
+    if existing_user:
+        return {"errors": ["Username already exists"]}, 400
+
     try:
-        user = User(username=data.get("username"))
-        user.password_hash = data.get("password")
+        user = User(username=data.get('username'))
+        user.password_hash = data.get('password')
 
         db.session.add(user)
         db.session.commit()
@@ -20,30 +25,38 @@ def signup():
         token = create_access_token(identity=str(user.id))
 
         return {
-            "message": "User created successfully",
             "token": token,
-            "user": {"id": user.id, "username": user.username}
+            "user": {
+                "id": user.id,
+                "username": user.username
+            }
         }, 201
 
     except Exception as e:
-        return {"error": str(e)}, 400
+        return {"errors": [str(e)]}, 400
 
 
-@auth_bp.post("/login")
+@auth_bp.post('/login')
 def login():
     data = request.get_json()
 
-    user = User.query.filter_by(username=data.get("username")).first()
+    user = User.query.filter_by(username=data.get('username')).first()
 
-    if user and user.authenticate(data.get("password")):
-        token = create_access_token(identity=str(user.id))
+    if not user:
+        return {"errors": ["User not found"]}, 404
 
-        return {
-            "token": token,
-            "user": {"id": user.id, "username": user.username}
-        }, 200
+    if not user.authenticate(data.get('password')):
+        return {"errors": ["Incorrect password"]}, 401
 
-    return {"error": "Invalid credentials"}, 401
+    token = create_access_token(identity=str(user.id))
+
+    return {
+        "token": token,
+        "user": {
+            "id": user.id,
+            "username": user.username
+        }
+    }, 200
 
 
 @auth_bp.get("/me")
